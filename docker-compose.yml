@@ -1,0 +1,22 @@
+services:
+  roulette:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: roulette-review:latest
+    container_name: roulette-review
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changez-moi}
+      - SESSION_SECRET=${SESSION_SECRET:-changez-ce-secret-de-session-32-caracteres-minimum}
+      - DATABASE_PATH=/data/app.db
+      - NUM_GROUPS=${NUM_GROUPS:-10}
+    volumes:
+      - roulette-data:/data
+
+volumes:
+  roulette-data:
+    driver: local
