@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CRITERIA, type CriterionKey } from "@/lib/scoring";
+import {
+  criterionLevelIndex,
+  weightPercent,
+  type Criterion,
+} from "@/lib/criteria";
 import { saveDraft, submitReview } from "@/server/actions/reviews";
 
 interface ReviewFormProps {
   assignmentId: number;
   reviewedName: string;
   repoUrl: string | null;
+  criteria: Criterion[];
   initialScores: Record<string, number>;
   initialComments: Record<string, string>;
   initialGeneralComment: string;
@@ -20,6 +25,7 @@ export function ReviewForm({
   assignmentId,
   reviewedName,
   repoUrl,
+  criteria,
   initialScores,
   initialComments,
   initialGeneralComment,
@@ -27,14 +33,14 @@ export function ReviewForm({
   const router = useRouter();
   const [scores, setScores] = useState<Record<string, number>>(() => {
     const base: Record<string, number> = {};
-    for (const criterion of CRITERIA) {
+    for (const criterion of criteria) {
       base[criterion.key] = initialScores[criterion.key] ?? 5;
     }
     return base;
   });
   const [comments, setComments] = useState<Record<string, string>>(() => {
     const base: Record<string, string> = {};
-    for (const criterion of CRITERIA) {
+    for (const criterion of criteria) {
       base[criterion.key] = initialComments[criterion.key] ?? "";
     }
     return base;
@@ -67,12 +73,12 @@ export function ReviewForm({
     return () => window.clearTimeout(timer);
   }, [scores, comments, generalComment, assignmentId, pending]);
 
-  function updateScore(key: CriterionKey, value: number) {
+  function updateScore(key: string, value: number) {
     interacted.current = true;
     setScores((current) => ({ ...current, [key]: value }));
   }
 
-  function updateComment(key: CriterionKey, value: string) {
+  function updateComment(key: string, value: string) {
     interacted.current = true;
     setComments((current) => ({ ...current, [key]: value }));
   }
@@ -131,9 +137,9 @@ export function ReviewForm({
         </p>
       </div>
 
-      {CRITERIA.map((criterion) => {
+      {criteria.map((criterion) => {
         const score = scores[criterion.key] ?? 5;
-        const levelIndex = score <= 3 ? 0 : score <= 6 ? 1 : score <= 8 ? 2 : 3;
+        const levelIndex = criterionLevelIndex(score);
         return (
           <div key={criterion.key} className="card p-5">
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -141,7 +147,7 @@ export function ReviewForm({
                 <p className="text-sm font-bold text-slate-900">
                   {criterion.label}
                   <span className="ml-2 text-xs font-medium text-slate-400">
-                    poids {Math.round(criterion.weight * 100)}%
+                    poids {weightPercent(criterion)}%
                   </span>
                 </p>
                 <p className="mt-0.5 text-xs text-slate-500">{criterion.hint}</p>

@@ -20,6 +20,8 @@ const ACTION_LABELS: Record<string, string> = {
   "admin.group.code_regenerate": "Régénération d'un code",
   "admin.group.registration_reset": "Réinitialisation d'inscription",
   "admin.review.reopen": "Réouverture d'une review",
+  "admin.criteria.update": "Modification de la grille",
+  "admin.criteria.reset": "Restauration de la grille",
   "group.login": "Connexion d'un groupe",
   "group.register": "Inscription d'un groupe",
   "group.repo.update": "Mise à jour du dépôt",

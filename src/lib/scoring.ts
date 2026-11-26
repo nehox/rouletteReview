@@ -1,115 +1,30 @@
-export type CriterionKey =
-  | "cleanliness"
-  | "architecture"
-  | "unitTests"
-  | "uiTests"
-  | "comments"
-  | "gitHistory";
+import {
+  DEFAULT_CRITERIA,
+  type Criterion,
+  type CriterionKey,
+} from "./criteria";
 
-export interface Criterion {
-  key: CriterionKey;
-  label: string;
-  shortLabel: string;
-  weight: number;
-  hint: string;
-  levels: [string, string, string, string];
-}
+export { DEFAULT_CRITERIA as CRITERIA } from "./criteria";
+export type { Criterion, CriterionKey } from "./criteria";
 
-export const CRITERIA: Criterion[] = [
-  {
-    key: "cleanliness",
-    label: "Propreté du code",
-    shortLabel: "Propreté",
-    weight: 0.2,
-    hint: "Lisibilité, nommage, formatage, organisation des fichiers.",
-    levels: [
-      "Code difficile à suivre, nommage incohérent.",
-      "Base compréhensible, quelques maladresses de forme.",
-      "Code globalement propre et lisible.",
-      "Très propre, homogène et facile à parcourir.",
-    ],
-  },
-  {
-    key: "architecture",
-    label: "Architecture",
-    shortLabel: "Architecture",
-    weight: 0.2,
-    hint: "Séparation des responsabilités, structure, réutilisabilité.",
-    levels: [
-      "Tout est mélangé dans peu de fichiers.",
-      "Quelques séparations existent mais restent fragiles.",
-      "Structure claire, responsabilités plutôt bien réparties.",
-      "Architecture soignée, modulaire et cohérente.",
-    ],
-  },
-  {
-    key: "unitTests",
-    label: "Tests unitaires",
-    shortLabel: "Tests unit.",
-    weight: 0.15,
-    hint: "Présence, pertinence et diversité des tests unitaires.",
-    levels: [
-      "Aucun test unitaire visible.",
-      "Quelques tests isolés, peu représentatifs.",
-      "Tests présents sur les parties importantes.",
-      "Bonne couverture des cas principaux et limites.",
-    ],
-  },
-  {
-    key: "uiTests",
-    label: "Tests UI",
-    shortLabel: "Tests UI",
-    weight: 0.1,
-    hint: "Présence et pertinence de tests d'interface.",
-    levels: [
-      "Aucun test d'interface.",
-      "Un scénario isolé ou très superficiel.",
-      "Quelques parcours d'interface testés.",
-      "Scénarios UI variés et utiles.",
-    ],
-  },
-  {
-    key: "comments",
-    label: "Commentaires & documentation",
-    shortLabel: "Docs",
-    weight: 0.15,
-    hint: "README, documentation et commentaires utiles.",
-    levels: [
-      "Pas de README ni de commentaires.",
-      "Documentation minimale, commentaires rares.",
-      "README correct et commentaires présents.",
-      "Documentation claire et commentaires pertinents.",
-    ],
-  },
-  {
-    key: "gitHistory",
-    label: "Historique Git",
-    shortLabel: "Git",
-    weight: 0.2,
-    hint: "Commits réguliers, messages clairs, collaboration.",
-    levels: [
-      "Un seul commit ou historique difficile à exploiter.",
-      "Quelques commits, messages peu explicites.",
-      "Commits réguliers avec des messages compréhensibles.",
-      "Historique riche, régulier et bien documenté.",
-    ],
-  },
-];
+export type Scores = Record<string, number | undefined>;
 
-export const CRITERION_KEYS = CRITERIA.map((criterion) => criterion.key);
-
-export type Scores = Partial<Record<CriterionKey, number>>;
-
-export function computeWeightedScore(scores: Scores): number | null {
+export function computeWeightedScore(
+  scores: Scores,
+  criteria: Criterion[] = DEFAULT_CRITERIA,
+): number | null {
   let total = 0;
-  for (const criterion of CRITERIA) {
+  let totalWeight = 0;
+  for (const criterion of criteria) {
     const value = scores[criterion.key];
     if (typeof value !== "number" || Number.isNaN(value)) {
       return null;
     }
     total += (value / 10) * criterion.weight;
+    totalWeight += criterion.weight;
   }
-  return Math.round(total * 20 * 100) / 100;
+  if (totalWeight <= 0) return null;
+  return Math.round((total / totalWeight) * 20 * 100) / 100;
 }
 
 export function average(values: number[]): number | null {
@@ -120,16 +35,17 @@ export function average(values: number[]): number | null {
 
 export interface AggregatedResult {
   reviewCount: number;
-  criteria: Record<CriterionKey, number | null>;
+  criteria: Record<string, number | null>;
   weightedScore: number | null;
 }
 
 export function aggregateReviews(
   entries: { scores: Record<string, number>; weightedScore: number | null }[],
+  criteria: Criterion[] = DEFAULT_CRITERIA,
 ): AggregatedResult {
-  const criteria = {} as Record<CriterionKey, number | null>;
-  for (const criterion of CRITERIA) {
-    criteria[criterion.key] = average(
+  const aggregated: Record<string, number | null> = {};
+  for (const criterion of criteria) {
+    aggregated[criterion.key] = average(
       entries
         .map((entry) => entry.scores[criterion.key])
         .filter((value): value is number => typeof value === "number"),
@@ -137,7 +53,7 @@ export function aggregateReviews(
   }
   return {
     reviewCount: entries.length,
-    criteria,
+    criteria: aggregated,
     weightedScore: average(
       entries
         .map((entry) => entry.weightedScore)

@@ -1,5 +1,5 @@
 import { getIronSession, type SessionOptions } from "iron-session";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export interface SessionData {
   role?: "admin" | "group";
@@ -35,11 +35,20 @@ export const sessionOptions: SessionOptions = {
   cookieOptions: {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     path: "/",
   },
 };
 
 export async function getSession() {
-  return getIronSession<SessionData>(await cookies(), sessionOptions);
+  const requestHeaders = await headers();
+  const protocol =
+    requestHeaders.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http";
+  return getIronSession<SessionData>(await cookies(), {
+    ...sessionOptions,
+    cookieOptions: {
+      ...sessionOptions.cookieOptions,
+      secure: protocol === "https",
+    },
+  });
 }

@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
+import type { Criterion } from "../src/lib/criteria";
 import {
   CRITERIA,
   aggregateReviews,
   computeWeightedScore,
 } from "../src/lib/scoring";
+
+const CUSTOM_CRITERIA: Criterion[] = [
+  {
+    key: "design",
+    label: "Design",
+    shortLabel: "Design",
+    weight: 0.25,
+    hint: "",
+    levels: ["", "", "", ""],
+  },
+  {
+    key: "security",
+    label: "Sécurité",
+    shortLabel: "Sécurité",
+    weight: 0.75,
+    hint: "",
+    levels: ["", "", "", ""],
+  },
+];
 
 function allScores(value: number) {
   return Object.fromEntries(CRITERIA.map((criterion) => [criterion.key, value]));
@@ -40,6 +60,15 @@ describe("computeWeightedScore", () => {
     };
     expect(computeWeightedScore(scores)).toBe(20);
   });
+
+  it("utilise la grille fournie et ignore les autres critères", () => {
+    const scores = { design: 10, security: 0, cleanliness: 10 };
+    expect(computeWeightedScore(scores, CUSTOM_CRITERIA)).toBe(5);
+  });
+
+  it("retourne null si un critère personnalisé manque", () => {
+    expect(computeWeightedScore({ design: 8 }, CUSTOM_CRITERIA)).toBeNull();
+  });
 });
 
 describe("aggregateReviews", () => {
@@ -60,5 +89,20 @@ describe("aggregateReviews", () => {
     expect(result.reviewCount).toBe(0);
     expect(result.weightedScore).toBeNull();
     expect(result.criteria.cleanliness).toBeNull();
+  });
+
+  it("n'agrège que les critères de la grille fournie", () => {
+    const result = aggregateReviews(
+      [
+        { scores: { design: 8, security: 4 }, weightedScore: 11 },
+        { scores: { design: 6, security: 8 }, weightedScore: 17 },
+      ],
+      CUSTOM_CRITERIA,
+    );
+    expect(result.reviewCount).toBe(2);
+    expect(result.criteria.design).toBe(7);
+    expect(result.criteria.security).toBe(6);
+    expect(result.criteria.cleanliness).toBeUndefined();
+    expect(result.weightedScore).toBe(14);
   });
 });

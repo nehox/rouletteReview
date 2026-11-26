@@ -169,7 +169,7 @@ export default async function InscriptionPage({
               <button
                 type="submit"
                 className="btn-primary w-full"
-                disabled={closed || !group}
+                disabled={closed}
               >
                 Valider l&apos;inscription
               </button>

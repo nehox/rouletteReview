@@ -15,6 +15,12 @@ import {
 import { logAudit } from "@/lib/audit";
 import { requireAdmin } from "@/lib/auth";
 import { generateDrawSeed, generateInviteCode } from "@/lib/codes";
+import {
+  CriteriaSchema,
+  MAX_CRITERIA,
+  MIN_CRITERIA,
+  type Criterion,
+} from "@/lib/criteria";
 import { MAX_GROUPS, MIN_GROUPS } from "@/lib/constants";
 import {
   getGroupById,
@@ -503,4 +509,133 @@ export async function reopenReview(formData: FormData) {
   });
   refresh();
   redirectTo("/admin/reviews", "ok", "Review réouverte pour modification.");
+}
+
+function canEditCriteria(phase: string): boolean {
+  return phase === "SETUP" || phase === "INSCRIPTIONS" || phase === "DRAW";
+}
+
+function uniqueCriterionKey(
+  label: string,
+  used: Set<string>,
+  index: number,
+): string {
+  const base =
+    label
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || `critere-${index + 1}`;
+  let key = base;
+  let suffix = 2;
+  while (used.has(key)) {
+    key = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  used.add(key);
+  return key;
+}
+
+export async function saveCriteria(formData: FormData) {
+  await requireAdmin();
+  const current = await getSettings();
+  if (!canEditCriteria(current.phase)) {
+    redirectTo(
+      "/admin/grille",
+      "error",
+      "La grille ne peut plus être modifiée une fois les reviews ouvertes.",
+    );
+  }
+
+  const count = Number.parseInt(String(formData.get("count") ?? ""), 10);
+  if (!Number.isInteger(count) || count < MIN_CRITERIA || count > MAX_CRITERIA) {
+    redirectTo(
+      "/admin/grille",
+      "error",
+      `Prévoyez entre ${MIN_CRITERIA} et ${MAX_CRITERIA} critères.`,
+    );
+  }
+
+  const usedKeys = new Set<string>();
+  const criteria: Criterion[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const label = String(formData.get(`label-${index}`) ?? "").trim();
+    const shortLabel = String(formData.get(`shortLabel-${index}`) ?? "").trim();
+    const hint = String(formData.get(`hint-${index}`) ?? "").trim();
+    const rawPercent = String(formData.get(`weight-${index}`) ?? "").replace(
+      ",",
+      ".",
+    );
+    const percent = Number(rawPercent);
+    if (!Number.isInteger(percent) || percent < 1 || percent > 100) {
+      redirectTo(
+        "/admin/grille",
+        "error",
+        `Le poids du critère ${index + 1} doit être un entier entre 1 et 100.`,
+      );
+    }
+
+    let key = String(formData.get(`key-${index}`) ?? "").trim();
+    if (!key || usedKeys.has(key)) {
+      key = uniqueCriterionKey(label, usedKeys, index);
+    } else {
+      usedKeys.add(key);
+    }
+
+    criteria.push({
+      key,
+      label,
+      shortLabel,
+      weight: percent / 100,
+      hint,
+      levels: [0, 1, 2, 3].map((level) =>
+        String(formData.get(`level-${index}-${level}`) ?? "").trim(),
+      ) as Criterion["levels"],
+    });
+  }
+
+  const parsed = CriteriaSchema.safeParse(criteria);
+  if (!parsed.success) {
+    redirectTo(
+      "/admin/grille",
+      "error",
+      parsed.error.issues[0]?.message ?? "Grille invalide.",
+    );
+  }
+
+  await db
+    .update(settings)
+    .set({ reviewCriteria: parsed.data, updatedAt: new Date() })
+    .where(eq(settings.id, 1));
+  await logAudit({
+    actorType: "admin",
+    action: "admin.criteria.update",
+    details: {
+      count: parsed.data.length,
+      labels: parsed.data.map((criterion) => criterion.label),
+    },
+  });
+  refresh();
+  redirectTo("/admin/grille", "ok", `Grille enregistrée (${parsed.data.length} critères).`);
+}
+
+export async function resetCriteria() {
+  await requireAdmin();
+  const current = await getSettings();
+  if (!canEditCriteria(current.phase)) {
+    redirectTo(
+      "/admin/grille",
+      "error",
+      "La grille ne peut plus être modifiée une fois les reviews ouvertes.",
+    );
+  }
+  await db
+    .update(settings)
+    .set({ reviewCriteria: null, updatedAt: new Date() })
+    .where(eq(settings.id, 1));
+  await logAudit({ actorType: "admin", action: "admin.criteria.reset" });
+  refresh();
+  redirectTo("/admin/grille", "ok", "Grille d'origine restaurée.");
 }

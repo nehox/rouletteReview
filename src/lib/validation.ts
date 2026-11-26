@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CRITERIA } from "./scoring";
+import { DEFAULT_CRITERIA, type Criterion } from "./criteria";
 import { isValidRepoUrl } from "./repo";
 
 export const inviteCodeSchema = z
@@ -61,7 +61,10 @@ export interface DraftPayload {
   generalComment: string;
 }
 
-export function parseDraftPayload(payload: unknown): DraftPayload {
+export function parseDraftPayload(
+  payload: unknown,
+  criteria: Criterion[] = DEFAULT_CRITERIA,
+): DraftPayload {
   const data =
     typeof payload === "object" && payload !== null
       ? (payload as {
@@ -72,7 +75,7 @@ export function parseDraftPayload(payload: unknown): DraftPayload {
       : {};
 
   const scores: Record<string, number> = {};
-  for (const criterion of CRITERIA) {
+  for (const criterion of criteria) {
     const raw = data.scores?.[criterion.key];
     const parsed = scoreSchema.safeParse(
       typeof raw === "string" ? Number(raw) : raw,
@@ -83,7 +86,7 @@ export function parseDraftPayload(payload: unknown): DraftPayload {
   }
 
   const criterionComments: Record<string, string> = {};
-  for (const criterion of CRITERIA) {
+  for (const criterion of criteria) {
     const raw = data.criterionComments?.[criterion.key];
     criterionComments[criterion.key] =
       typeof raw === "string" ? raw.trim().slice(0, 1500) : "";
@@ -97,7 +100,10 @@ export function parseDraftPayload(payload: unknown): DraftPayload {
   return { scores, criterionComments, generalComment };
 }
 
-export function parseReviewPayload(payload: unknown):
+export function parseReviewPayload(
+  payload: unknown,
+  criteria: Criterion[] = DEFAULT_CRITERIA,
+):
   | {
       ok: true;
       scores: Record<string, number>;
@@ -116,7 +122,7 @@ export function parseReviewPayload(payload: unknown):
   };
 
   const scores: Record<string, number> = {};
-  for (const criterion of CRITERIA) {
+  for (const criterion of criteria) {
     const raw = data.scores?.[criterion.key];
     const parsed = scoreSchema.safeParse(
       typeof raw === "string" ? Number(raw) : raw,
@@ -131,7 +137,7 @@ export function parseReviewPayload(payload: unknown):
   }
 
   const criterionComments: Record<string, string> = {};
-  for (const criterion of CRITERIA) {
+  for (const criterion of criteria) {
     const raw = data.criterionComments?.[criterion.key];
     criterionComments[criterion.key] =
       typeof raw === "string" ? raw.trim().slice(0, 1500) : "";

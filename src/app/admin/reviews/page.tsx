@@ -2,13 +2,14 @@ import Link from "next/link";
 import { AdminNav } from "@/components/admin-nav";
 import { Alert, EmptyState, PageHeader, PhaseBadge, Progress, StatCard } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { criteriaFromSettings } from "@/lib/criteria";
 import {
   getAllAssignments,
   getSettings,
   getStats,
 } from "@/lib/data";
 import { formatDate } from "@/lib/format";
-import { CRITERIA, formatNote, formatScore } from "@/lib/scoring";
+import { formatNote, formatScore } from "@/lib/scoring";
 import { reopenReview } from "@/server/actions/admin";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function AdminReviewsPage({
     searchParams,
   ]);
 
+  const criteria = criteriaFromSettings(settings);
   const expected = stats.registeredGroups * 2;
   const submitted = assignments.filter(
     (row) => row.review?.status === "submitted",
@@ -161,7 +163,7 @@ export default async function AdminReviewsPage({
                               Voir
                             </summary>
                             <div className="mt-2 w-80 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                              {CRITERIA.map((criterion) => {
+                              {criteria.map((criterion) => {
                                 const score = row.review?.scores[criterion.key];
                                 const comment =
                                   row.review?.criterionComments[criterion.key];

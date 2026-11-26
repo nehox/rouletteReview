@@ -2,14 +2,16 @@ import Link from "next/link";
 import { AdminNav } from "@/components/admin-nav";
 import { Alert, EmptyState, PageHeader, PhaseBadge, StatCard } from "@/components/ui";
 import { requireAdmin } from "@/lib/auth";
+import { criteriaFromSettings } from "@/lib/criteria";
 import { getResults, getSettings } from "@/lib/data";
-import { CRITERIA, formatNote, formatScore } from "@/lib/scoring";
+import { formatNote, formatScore } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminResultsPage() {
   await requireAdmin();
   const [settings, results] = await Promise.all([getSettings(), getResults()]);
+  const criteria = criteriaFromSettings(settings);
 
   const sorted = [...results].sort(
     (a, b) =>
@@ -86,7 +88,7 @@ export default async function AdminResultsPage() {
                     <th>#</th>
                     <th>Projet</th>
                     <th>Reviews</th>
-                    {CRITERIA.map((criterion) => (
+                    {criteria.map((criterion) => (
                       <th key={criterion.key}>{criterion.shortLabel}</th>
                     ))}
                     <th>Note /20</th>
@@ -133,7 +135,7 @@ export default async function AdminResultsPage() {
                           {entry.result.reviewCount}/2
                         </span>
                       </td>
-                      {CRITERIA.map((criterion) => (
+                      {criteria.map((criterion) => (
                         <td key={criterion.key} className="text-slate-700">
                           {formatScore(entry.result.criteria[criterion.key])}
                         </td>

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS settings (
   draw_at INTEGER,
   reviews_closed_at INTEGER,
   results_published_at INTEGER,
+  review_criteria TEXT,
   updated_at INTEGER NOT NULL
 );
 
@@ -76,6 +77,14 @@ function createDatabase() {
   sqlite.pragma("busy_timeout = 10000");
   sqlite.pragma("foreign_keys = ON");
   sqlite.exec(SCHEMA_SQL);
+
+  const settingsColumns = sqlite
+    .prepare("PRAGMA table_info(settings)")
+    .all() as { name: string }[];
+  if (!settingsColumns.some((column) => column.name === "review_criteria")) {
+    sqlite.exec("ALTER TABLE settings ADD COLUMN review_criteria TEXT");
+  }
+
   sqlite
     .prepare(
       `INSERT INTO settings (id, phase, num_groups, updated_at)

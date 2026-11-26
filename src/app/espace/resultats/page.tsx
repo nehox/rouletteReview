@@ -3,13 +3,10 @@ import { redirect } from "next/navigation";
 import { StudentNav } from "@/components/student-nav";
 import { Alert, PageHeader, PhaseBadge, Progress } from "@/components/ui";
 import { requireGroup } from "@/lib/auth";
+import { criteriaFromSettings } from "@/lib/criteria";
 import { getGroupById, getGroupResult, getSettings } from "@/lib/data";
 import { formatDate } from "@/lib/format";
-import {
-  CRITERIA,
-  formatNote,
-  formatScore,
-} from "@/lib/scoring";
+import { formatNote, formatScore } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +16,7 @@ export default async function StudentResultsPage() {
   if (!group) redirect("/");
 
   const settings = await getSettings();
+  const criteria = criteriaFromSettings(settings);
   const groupName = group.displayName ?? group.slotLabel;
   const published =
     settings.phase === "CLOSED" && settings.resultsPublishedAt !== null;
@@ -69,7 +67,7 @@ export default async function StudentResultsPage() {
                 </div>
                 <div className="w-full sm:w-72">
                   <div className="space-y-2">
-                    {CRITERIA.map((criterion) => {
+                    {criteria.map((criterion) => {
                       const value = result.result.criteria[criterion.key];
                       return (
                         <div key={criterion.key}>
@@ -117,7 +115,7 @@ export default async function StudentResultsPage() {
                       Voir le détail par critère
                     </summary>
                     <div className="mt-2 space-y-2">
-                      {CRITERIA.map((criterion) => {
+                      {criteria.map((criterion) => {
                         const score = review.scores[criterion.key];
                         const comment =
                           review.criterionComments[criterion.key];

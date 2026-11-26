@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
+import type { Criterion } from "../src/lib/criteria";
 import {
   parseDraftPayload,
   parseReviewPayload,
 } from "../src/lib/validation";
 import { normalizeRepoUrl } from "../src/lib/repo";
 import { CRITERIA } from "../src/lib/scoring";
+
+const CUSTOM_CRITERIA: Criterion[] = [
+  {
+    key: "design",
+    label: "Design",
+    shortLabel: "Design",
+    weight: 1,
+    hint: "",
+    levels: ["", "", "", ""],
+  },
+];
 
 function scores(value: number) {
   return Object.fromEntries(CRITERIA.map((criterion) => [criterion.key, value]));
@@ -61,6 +73,25 @@ describe("parseReviewPayload", () => {
     });
     expect(result.ok).toBe(false);
   });
+
+  it("valide une review selon la grille fournie", () => {
+    const result = parseReviewPayload(
+      { scores: { design: 9 }, generalComment: "Test" },
+      CUSTOM_CRITERIA,
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.scores.design).toBe(9);
+    }
+  });
+
+  it("refuse une review incomplète selon la grille fournie", () => {
+    const result = parseReviewPayload(
+      { scores: { cleanliness: 9 }, generalComment: "Test" },
+      CUSTOM_CRITERIA,
+    );
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe("parseDraftPayload", () => {
@@ -73,5 +104,14 @@ describe("parseDraftPayload", () => {
     expect(result.scores.cleanliness).toBe(8);
     expect(result.scores.architecture).toBeUndefined();
     expect(result.criterionComments.architecture).toBe("À revoir");
+  });
+
+  it("filtre le brouillon selon la grille fournie", () => {
+    const result = parseDraftPayload(
+      { scores: { design: 8, cleanliness: 3 } },
+      CUSTOM_CRITERIA,
+    );
+    expect(result.scores.design).toBe(8);
+    expect(result.scores.cleanliness).toBeUndefined();
   });
 });

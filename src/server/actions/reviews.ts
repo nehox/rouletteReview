@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { db, reviews } from "@/db";
 import { logAudit } from "@/lib/audit";
+import { criteriaFromSettings } from "@/lib/criteria";
 import {
   getAssignmentForReviewer,
   getSettings,
@@ -48,7 +49,7 @@ export async function saveDraft(
     return { ok: false, error: "Cette review est déjà soumise." };
   }
 
-  const draft = parseDraftPayload(payload);
+  const draft = parseDraftPayload(payload, criteriaFromSettings(settings));
   const now = new Date();
 
   await db
@@ -96,7 +97,8 @@ export async function submitReview(
     return { ok: false, error: "Cette review est déjà soumise." };
   }
 
-  const parsed = parseReviewPayload(payload);
+  const criteria = criteriaFromSettings(settings);
+  const parsed = parseReviewPayload(payload, criteria);
   if (!parsed.ok) {
     return { ok: false, error: parsed.error };
   }
@@ -109,7 +111,7 @@ export async function submitReview(
     };
   }
 
-  const weightedScore = computeWeightedScore(parsed.scores);
+  const weightedScore = computeWeightedScore(parsed.scores, criteria);
   if (weightedScore === null) {
     return { ok: false, error: "Toutes les notes doivent être renseignées." };
   }

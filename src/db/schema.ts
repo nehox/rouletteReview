@@ -5,6 +5,7 @@ import {
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import type { Criterion } from "../lib/criteria";
 
 export const PHASES = [
   "SETUP",
@@ -46,6 +47,7 @@ export const settings = sqliteTable("settings", {
   drawAt: integer("draw_at", { mode: "timestamp" }),
   reviewsClosedAt: integer("reviews_closed_at", { mode: "timestamp" }),
   resultsPublishedAt: integer("results_published_at", { mode: "timestamp" }),
+  reviewCriteria: text("review_criteria", { mode: "json" }).$type<Criterion[]>(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
 

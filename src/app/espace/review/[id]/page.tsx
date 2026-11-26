@@ -9,8 +9,9 @@ import {
   getGroupById,
   getSettings,
 } from "@/lib/data";
+import { criteriaFromSettings } from "@/lib/criteria";
 import { formatDate } from "@/lib/format";
-import { CRITERIA, formatNote, formatScore } from "@/lib/scoring";
+import { formatNote, formatScore } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function ReviewPage({
   ]);
   if (!assignment) notFound();
 
+  const criteria = criteriaFromSettings(settings);
   const groupName = group.displayName ?? group.slotLabel;
   const reviewedName =
     assignment.reviewed.displayName ?? assignment.reviewed.slotLabel;
@@ -99,7 +101,7 @@ export default async function ReviewPage({
               </div>
 
               <div className="mt-4 space-y-3">
-                {CRITERIA.map((criterion) => {
+                {criteria.map((criterion) => {
                   const score = assignment.review?.scores[criterion.key];
                   const comment =
                     assignment.review?.criterionComments[criterion.key];
@@ -143,6 +145,7 @@ export default async function ReviewPage({
             assignmentId={assignment.assignment.id}
             reviewedName={reviewedName}
             repoUrl={assignment.reviewed.repoUrl}
+            criteria={criteria}
             initialScores={assignment.review?.scores ?? {}}
             initialComments={assignment.review?.criterionComments ?? {}}
             initialGeneralComment={assignment.review?.generalComment ?? ""}

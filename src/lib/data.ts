@@ -11,6 +11,7 @@ import {
   type Review,
   type Settings,
 } from "@/db";
+import { criteriaFromSettings } from "./criteria";
 import {
   aggregateReviews,
   type AggregatedResult,
@@ -191,7 +192,8 @@ export interface GroupResult {
 }
 
 export async function getResults(): Promise<GroupResult[]> {
-  const allGroups = await getGroups();
+  const [allGroups, settings] = await Promise.all([getGroups(), getSettings()]);
+  const criteria = criteriaFromSettings(settings);
   const rows = await db
     .select({
       reviewedGroupId: assignments.reviewedGroupId,
@@ -216,6 +218,7 @@ export async function getResults(): Promise<GroupResult[]> {
         scores: review.scores,
         weightedScore: review.weightedScore,
       })),
+      criteria,
     );
 
     return {

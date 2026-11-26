@@ -1,11 +1,13 @@
+import { criteriaFromSettings } from "@/lib/criteria";
 import { csvResponse, toCsv } from "@/lib/csv";
 import {
   getAllAssignments,
   getGroups,
   getResults,
+  getSettings,
 } from "@/lib/data";
 import { formatDate } from "@/lib/format";
-import { CRITERIA, formatScore } from "@/lib/scoring";
+import { formatScore } from "@/lib/scoring";
 import { getSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export async function GET(
     return new Response("Accès refusé.", { status: 401 });
   }
 
+  const criteria = criteriaFromSettings(await getSettings());
   const { type } = await params;
 
   if (type === "groups") {
@@ -82,14 +85,14 @@ export async function GET(
         "Reviewer",
         "Projet évalué",
         "Statut",
-        ...CRITERIA.map((criterion) => criterion.label),
+        ...criteria.map((criterion) => criterion.label),
         "Note /20",
         "Commentaire général",
         "Commentaires par critère",
         "Soumise le",
       ],
       assignments.map((row) => {
-        const criterionComments = CRITERIA.map((criterion) => {
+        const criterionComments = criteria.map((criterion) => {
           const comment = row.review?.criterionComments[criterion.key];
           return comment ? `${criterion.shortLabel}: ${comment}` : "";
         })
@@ -99,7 +102,7 @@ export async function GET(
           row.reviewer.displayName ?? row.reviewer.slotLabel,
           row.reviewed.displayName ?? row.reviewed.slotLabel,
           STATUS_LABELS[row.review?.status ?? "todo"],
-          ...CRITERIA.map((criterion) =>
+          ...criteria.map((criterion) =>
             formatScore(row.review?.scores[criterion.key]),
           ),
           row.review?.weightedScore ?? "",
@@ -122,14 +125,14 @@ export async function GET(
         "Projet",
         "Dépôt",
         "Reviews reçues",
-        ...CRITERIA.map((criterion) => criterion.label),
+        ...criteria.map((criterion) => criterion.label),
         "Note /20",
       ],
       sorted.map((entry) => [
         entry.group.displayName ?? entry.group.slotLabel,
         entry.group.repoUrl ?? "",
         entry.result.reviewCount,
-        ...CRITERIA.map((criterion) =>
+        ...criteria.map((criterion) =>
           formatScore(entry.result.criteria[criterion.key]),
         ),
         entry.result.weightedScore ?? "",
